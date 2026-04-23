@@ -186,16 +186,6 @@ body, html {
 @media (max-width: 768px) {
   .editor-toolbar {
     padding: 0 0.5rem;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Hide scrollbar for clean look */
-  }
-  .editor-toolbar::-webkit-scrollbar {
-    display: none;
-  }
-  .app-logo {
-    margin-right: 0.5rem;
   }
   .app-logo span {
     display: none;
