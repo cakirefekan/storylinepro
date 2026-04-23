@@ -173,7 +173,8 @@ const EditorUI = () => {
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.storypro,.zip';
+    // iOS custom extension issue fix: Broaden accept and add common zip types
+    input.accept = '.storypro,.zip,application/zip,application/x-zip-compressed,application/octet-stream';
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
