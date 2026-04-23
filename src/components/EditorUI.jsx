@@ -171,16 +171,25 @@ const EditorUI = () => {
   };
 
   const handleImport = () => {
+    // Bazı tarayıcılarda input'un çalışması için DOM'a eklenmesi gerekebilir
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.storypro,.zip';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    
+    input.accept = '.storypro,.zip,application/zip,application/x-zip-compressed';
+    
     input.onchange = async (e) => {
       const file = e.target.files[0];
-      if (!file) return;
+      if (!file) {
+        document.body.removeChild(input);
+        return;
+      }
 
+      console.log("Dosya seçildi:", file.name, file.size);
       const zip = new JSZip();
+      
       try {
-        // Production'da daha güvenli okuma için ArrayBuffer kullanıyoruz
         const arrayBuffer = await file.arrayBuffer();
         const contents = await zip.loadAsync(arrayBuffer);
         
@@ -189,20 +198,16 @@ const EditorUI = () => {
         if (jsonFile) {
           const jsonText = await jsonFile.async("string");
           const data = JSON.parse(jsonText);
+          console.log("JSON Verisi okundu:", data);
           
-          // Tek tek setter'ları kullanmak React'ın değişikliği algılamasını garanti eder
-          if (data.checkpoints) {
-             useStore.getState().importCheckpoints(data.checkpoints);
-          }
-          if (data.technicalViews) {
-             useStore.setState({ technicalViews: data.technicalViews });
-          }
-          if (data.lighting) {
-             useStore.getState().setLighting(data.lighting);
-          }
-          if (data.layerColors) {
-             useStore.setState({ layerColors: data.layerColors });
-          }
+          // Store'u toplu olarak güncelle (Atomic update)
+          useStore.setState({
+            checkpoints: data.checkpoints || [],
+            technicalViews: data.technicalViews || [],
+            lighting: data.lighting || useStore.getState().lighting,
+            layerColors: data.layerColors || {},
+            activeIndex: 0
+          });
         }
 
         // Load Model
@@ -211,17 +216,18 @@ const EditorUI = () => {
           const modelBlob = await modelFile.async("blob");
           const modelUrl = URL.createObjectURL(modelBlob);
           setModelUrl(modelUrl);
+          console.log("Model URL oluşturuldu:", modelUrl);
         }
 
-        // Başarı durumunda index'i sıfırla ve UI'ı zorla güncelle
-        useStore.setState({ activeIndex: 0 });
-        alert("Proje dosyası başarıyla yüklendi.");
-        
-        // UI'ın yenilenmesi için küçük bir tetikleyici
+        alert("Proje başarıyla yüklendi!");
         window.dispatchEvent(new CustomEvent('jumpToPhase', { detail: 0 }));
       } catch (err) {
-        console.error("Yükleme hatası:", err);
-        alert("Hata: Proje dosyası okunamadı. Detay: " + err.message);
+        console.error("Yükleme sırasında hata oluştu:", err);
+        alert("Hata: " + err.message);
+      } finally {
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
       }
     };
     input.click();
