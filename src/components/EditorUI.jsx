@@ -180,17 +180,29 @@ const EditorUI = () => {
 
       const zip = new JSZip();
       try {
-        const contents = await zip.loadAsync(file);
+        // Production'da daha güvenli okuma için ArrayBuffer kullanıyoruz
+        const arrayBuffer = await file.arrayBuffer();
+        const contents = await zip.loadAsync(arrayBuffer);
         
         // Load JSON
         const jsonFile = contents.file("project.json");
         if (jsonFile) {
           const jsonText = await jsonFile.async("string");
           const data = JSON.parse(jsonText);
-          if (data.checkpoints) useStore.setState({ checkpoints: data.checkpoints });
-          if (data.technicalViews) useStore.setState({ technicalViews: data.technicalViews });
-          if (data.lighting) useStore.setState({ lighting: data.lighting });
-          if (data.layerColors) useStore.setState({ layerColors: data.layerColors });
+          
+          // Tek tek setter'ları kullanmak React'ın değişikliği algılamasını garanti eder
+          if (data.checkpoints) {
+             useStore.getState().importCheckpoints(data.checkpoints);
+          }
+          if (data.technicalViews) {
+             useStore.setState({ technicalViews: data.technicalViews });
+          }
+          if (data.lighting) {
+             useStore.getState().setLighting(data.lighting);
+          }
+          if (data.layerColors) {
+             useStore.setState({ layerColors: data.layerColors });
+          }
         }
 
         // Load Model
@@ -201,10 +213,15 @@ const EditorUI = () => {
           setModelUrl(modelUrl);
         }
 
+        // Başarı durumunda index'i sıfırla ve UI'ı zorla güncelle
+        useStore.setState({ activeIndex: 0 });
         alert("Proje dosyası başarıyla yüklendi.");
+        
+        // UI'ın yenilenmesi için küçük bir tetikleyici
+        window.dispatchEvent(new CustomEvent('jumpToPhase', { detail: 0 }));
       } catch (err) {
         console.error("Yükleme hatası:", err);
-        alert("Geçersiz proje dosyası.");
+        alert("Hata: Proje dosyası okunamadı. Detay: " + err.message);
       }
     };
     input.click();
